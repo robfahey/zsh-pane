@@ -11,10 +11,11 @@ The code is a shell function for zsh, and needs to be added to your .zshrc file 
 ## Usage:
 
 ```shell
-pane <command...> [--interval SECONDS]
+pane [--interval SECONDS|-n SECONDS] [--] <command ...>
 ```
 
 `interval` will default to 300 seconds (5 minutes).
+You can optionally include `--` to indicate the end of options, after which the command to run should be specified. (It will work without this, but it can help to make the command syntax more clear.)
 
 
 ### To-Do:
