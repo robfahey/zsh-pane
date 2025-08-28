@@ -1,0 +1,40 @@
+# Display and refresh the output of a given command in a terminal pane
+
+# This is NOT a shell script; it's a function for use in a zsh environment.
+# To add it to your shell, you'll need to copy everything below to your .zshrc file,
+# and then reload it with `source ~/.zshrc`
+
+# Usage: pane <command...> [--interval SECONDS]
+pane() {
+  # default refresh time = 300s
+  local interval=300
+  local args=()
+
+  # parse the flags in the command
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --interval|-n) interval="$2"; shift 2 ;;
+      *) args+=("$1"); shift ;;
+    esac
+  done
+
+  # if run without flags, return a helpful message
+  if [[ ${#args[@]} -eq 0 ]]; then
+    echo "Usage: pane <command...> [--interval SECONDS]" >&2
+    return 1
+  fi
+
+  # hide cursor; restore on exit
+  tput civis 2>/dev/null || true
+  trap 'tput cnorm 2>/dev/null || true; echo; return' INT TERM EXIT
+
+  while true; do
+    # fast clear + move cursor home
+    printf '\e[H\e[2J'
+    # uncomment this bit to print a tiny header
+    # printf '[%s] running: %s\n\n' "$(date '+%H:%M:%S')" "${(j: :)args}"
+    # run the command; because this is a real TTY, colors/ANSI are preserved
+    "${args[@]}"
+    sleep "$interval"
+  done
+}
