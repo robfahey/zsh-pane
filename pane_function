@@ -5,12 +5,16 @@
 # and then reload it with `source ~/.zshrc`
 
 # Usage:
-#   pane [--interval SECONDS|-n SECONDS] [--] <command ...>
+#   pane [--interval SECONDS|-n SECONDS] 
+#        [--exec 'SHELL COMMAND' | -e 'SHELL COMMAND']
+#        [--] <command> [arg1 ...]
+
 pane() {
   # default refresh time = 300s
   local interval=300
   local args=()
   local parsing_flags=1
+  local exec_str=""
 
   # parse the flags in the command (more robust)
   while [[ $# -gt 0 ]]; do
@@ -34,6 +38,15 @@ pane() {
           interval="${1#-n}"
           shift
           ;;
+        --exec=*|-e=*)            # allow --exec and -e to work with =
+          exec_str="${1#*=}"
+          shift
+          ;;
+        --exec|-e)                # --exec 'cmd line...' | -e 'cmd line...'
+          [[ $# -lt 2 ]] && { echo "Missing value for $1" >&2; return 1; }
+          exec_str="$2"
+          shift 2
+          ;;          
         -*)                       # any other dash option means: command starts here
           parsing_flags=0
           args=("$@")
@@ -52,8 +65,8 @@ pane() {
   done
 
   # if run without flags, return a helpful message
-  if [[ ${#args[@]} -eq 0 ]]; then
-    echo "pane [--interval SECONDS|-n SECONDS] [--] <command ...>" >&2
+  if [[ -z "$exec_str" && ${#args[@]} -eq 0 ]]; then
+    echo "pane [--interval SECONDS|-n SECONDS] [--exec 'SHELL COMMAND' | -e 'SHELL COMMAND'] [--] <command> [arg1 ...]" >&2
     return 1
   fi
 
@@ -66,8 +79,16 @@ pane() {
     printf '\e[H\e[2J'
     # uncomment this bit to print a tiny header
     # printf '[%s] running: %s\n\n' "$(date '+%H:%M:%S')" "${(j: :)args}"
-    # run the command; because this is a real TTY, colors/ANSI are preserved
-    "${args[@]}"
+
+    # Different execution for --exec vs. a standard command on the end...
+    if [[ -n "$exec_str" ]]; then
+      # Run the --exec command through a real zsh shell; pipes, redirection etc. will work
+      zsh -lc "$exec_str"
+    else
+      # Direct argv execution; fine for most things, it's a real TTY so colours / ANSI etc. preserved.
+      "${args[@]}"
+    fi
+
     sleep "$interval"
   done
 }
